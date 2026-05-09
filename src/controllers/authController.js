@@ -1,13 +1,16 @@
-const { hashPassword, verifyPassword } = require('../utils/password');
+const { hashPassword, verifyPassword } =
+require('../utils/password');
 
 const {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
-  buildTokenPayload,
+  buildTokenPayload
 } = require('../utils/jwt');
 
-const prisma = require('../config/db');
+const prisma =
+require('../config/db');
+
 
 const ROLES = {
   ADMIN: 'admin',
@@ -18,64 +21,75 @@ const ROLES = {
 
 // REGISTER
 async function register(req, res) {
+
   try {
 
-    const { email, password, role } = req.body;
+    const { email, password, role } =
+      req.body;
 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required.'
+        message:
+          'Email and password are required.'
       });
     }
 
     const existingUser =
       await prisma.user.findUnique({
         where: {
-          email: email.toLowerCase()
+          email:
+            email.toLowerCase()
         }
       });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'Email already registered.'
+        message:
+          'Email already registered.'
       });
     }
 
     const hashedPassword =
       await hashPassword(password);
 
-    const assignedRole =
-      role || ROLES.USER;
-
     const newUser =
       await prisma.user.create({
         data: {
-          email: email.toLowerCase(),
-          password: hashedPassword,
-          role: assignedRole
+          email:
+            email.toLowerCase(),
+          password:
+            hashedPassword,
+          role:
+            role || ROLES.USER
         }
       });
 
     return res.status(201).json({
       success: true,
-      message: 'User registered successfully.',
+      message:
+        'User registered successfully.',
       user: {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role,
-        createdAt: newUser.createdAt
+        createdAt:
+          newUser.createdAt
       }
     });
 
   } catch (err) {
 
-    console.error(err);
+    console.error(
+      '[register]',
+      err
+    );
 
     return res.status(500).json({
       success: false,
-      message: 'Registration failed.'
+      message:
+        'Registration failed.'
     });
   }
 }
@@ -86,19 +100,22 @@ async function login(req, res) {
 
   try {
 
-    const { email, password } = req.body;
+    const { email, password } =
+      req.body;
 
     const user =
       await prisma.user.findUnique({
         where: {
-          email: email.toLowerCase()
+          email:
+            email.toLowerCase()
         }
       });
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials.'
+        message:
+          'Invalid credentials.'
       });
     }
 
@@ -111,7 +128,8 @@ async function login(req, res) {
     if (!valid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials.'
+        message:
+          'Invalid credentials.'
       });
     }
 
@@ -126,14 +144,17 @@ async function login(req, res) {
 
     await prisma.refreshToken.create({
       data: {
-        token: refreshToken,
-        userId: user.id
+        token:
+          refreshToken,
+        userId:
+          user.id
       }
     });
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful.',
+      message:
+        'Login successful.',
       accessToken,
       refreshToken,
       user: {
@@ -145,11 +166,127 @@ async function login(req, res) {
 
   } catch (err) {
 
-    console.error(err);
+    console.error(
+      '[login]',
+      err
+    );
 
     return res.status(500).json({
       success: false,
-      message: 'Login failed.'
+      message:
+        'Login failed.'
+    });
+  }
+}
+
+
+// REFRESH
+async function refresh(req, res) {
+
+  try {
+
+    const token =
+      req.body.refreshToken;
+
+    const tokenRecord =
+      await prisma.refreshToken.findFirst({
+        where: {
+          token
+        }
+      });
+
+    if (!tokenRecord) {
+      return res.status(401).json({
+        success: false,
+        message:
+          'Refresh token revoked or invalid.'
+      });
+    }
+
+    const decoded =
+      verifyRefreshToken(token);
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          id:
+            decoded.sub
+        }
+      });
+
+    const payload =
+      buildTokenPayload(user);
+
+    const accessToken =
+      generateAccessToken(payload);
+
+    return res.status(200).json({
+      success: true,
+      accessToken
+    });
+
+  } catch (err) {
+
+    return res.status(401).json({
+      success: false,
+      message:
+        'Invalid refresh token.'
+    });
+  }
+}
+
+
+// LOGOUT
+async function logout(req, res) {
+
+  try {
+
+    const token =
+      req.body.refreshToken;
+
+    await prisma.refreshToken.deleteMany({
+      where: {
+        token
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        'Logged out successfully.'
+    });
+
+  } catch {
+
+    return res.status(500).json({
+      success: false
+    });
+  }
+}
+
+
+// ME
+async function me(req, res) {
+
+  try {
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          id:
+            req.user.id
+        }
+      });
+
+    return res.status(200).json({
+      success: true,
+      user
+    });
+
+  } catch {
+
+    return res.status(500).json({
+      success: false
     });
   }
 }
@@ -157,5 +294,9 @@ async function login(req, res) {
 
 module.exports = {
   register,
-  login
+  login,
+  refresh,
+  logout,
+  me
 };
+
