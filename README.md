@@ -1,159 +1,208 @@
-# 🔐 Authentication & Authorization System
+# Secure Authentication & Authorization System
 
-A production-ready JWT authentication system with Role-Based Access Control (RBAC), bcrypt password hashing, and refresh token rotation.
+A production-grade authentication and authorization backend built with Node.js, Express, Prisma, PostgreSQL, JWT, and Role-Based Access Control (RBAC).
+
+Live API: https://rbac-jwt-auth-systems.onrender.com
+
+---
 
 ## Features
 
-- **JWT Authentication** — Short-lived access tokens (15m) + long-lived refresh tokens (7d)
-- **Token Refresh & Rotation** — Refresh tokens are rotated on every use to prevent reuse attacks
-- **RBAC** — Three roles: `admin`, `manager`, `user` with fine-grained permission scopes
-- **Password Security** — bcrypt hashing with configurable rounds (default: 12)
-- **Rate Limiting** — Global limiter + strict auth endpoint limiter (10 req/15m)
-- **Security Headers** — Helmet.js for secure HTTP headers
-- **HttpOnly Cookies** — Refresh tokens can be stored in httpOnly cookies for web clients
-- **Comprehensive Tests** — Jest + Supertest covering all flows
+✅ User Registration  
+✅ Secure Login  
+✅ Password Hashing using bcrypt  
+✅ JWT Access Tokens  
+✅ Refresh Token Rotation  
+✅ Logout + Token Revocation  
+✅ Role-Based Access Control (RBAC)  
+✅ Permission-Based API Protection  
+✅ PostgreSQL Persistence  
+✅ Cloud Deployment  
+✅ Production Security Middleware
 
-## Project Structure
+---
 
+## Tech Stack
+
+Backend:
+- Node.js
+- Express.js
+
+Database:
+- PostgreSQL
+- Prisma ORM
+
+Authentication:
+- JSON Web Token (JWT)
+- bcryptjs
+
+Security:
+- Helmet
+- Rate Limiting
+- CORS
+- Cookie Parser
+
+Deployment:
+- Render
+- Neon PostgreSQL
+
+---
+
+## Architecture
+
+Client
+↓
+Express API
+↓
+Authentication Middleware
+↓
+RBAC + Permission Checks
+↓
+Prisma ORM
+↓
+PostgreSQL
+
+---
+
+## Live API
+
+https://rbac-jwt-auth-systems.onrender.com
+
+Health Check:
+
+https://rbac-jwt-auth-systems.onrender.com/health
+
+---
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+DATABASE_URL=
+
+JWT_ACCESS_SECRET=
+
+JWT_REFRESH_SECRET=
+
+NODE_ENV=production
 ```
-auth-system/
-├── src/
-│   ├── config/
-│   │   └── config.js          # Environment configuration
-│   ├── controllers/
-│   │   ├── authController.js  # Register, login, refresh, logout, me
-│   │   └── usersController.js # User CRUD + reports + settings
-│   ├── middleware/
-│   │   └── auth.js            # authenticate, authorize, requirePermission
-│   ├── models/
-│   │   └── store.js           # In-memory store, ROLES, PERMISSIONS
-│   ├── routes/
-│   │   ├── auth.js            # /auth/* routes
-│   │   └── api.js             # /api/* protected routes
-│   ├── utils/
-│   │   ├── jwt.js             # Token generation & verification
-│   │   └── password.js        # bcrypt hashing helpers
-│   └── server.js              # Express app entry point
-├── tests/
-│   └── auth.test.js           # Full test suite
-├── .env.example
-├── jest.config.json
-└── package.json
-```
 
-## Setup
+---
+
+## Installation
+
+Clone repository:
 
 ```bash
-# Install dependencies
+git clone https://github.com/Tanmay2329/RBAC-JWT-auth-systems
+```
+
+Install dependencies:
+
+```bash
 npm install
+```
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your secrets
+Generate Prisma client:
 
-# Run development server
+```bash
+npx prisma generate
+```
+
+Run migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+Start server:
+
+```bash
 npm run dev
-
-# Run tests
-npm test
 ```
 
-## RBAC Model
+---
 
-| Permission       | admin | manager | user |
-|-----------------|-------|---------|------|
-| users:read      | ✅    | ✅      | ✅   |
-| users:write     | ✅    | ❌      | ❌   |
-| users:delete    | ✅    | ❌      | ❌   |
-| reports:read    | ✅    | ✅      | ✅   |
-| reports:write   | ✅    | ✅      | ❌   |
-| settings:read   | ✅    | ✅      | ❌   |
-| settings:write  | ✅    | ❌      | ❌   |
+## API Endpoints
 
-## API Reference
+### Authentication
 
-### Auth Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /auth/register | Register new user |
+| POST | /auth/login | Login |
+| POST | /auth/refresh | Refresh tokens |
+| POST | /auth/logout | Logout |
+| GET | /auth/me | Current user |
 
-#### Register
-```http
-POST /auth/register
-Content-Type: application/json
+---
 
-{ "email": "user@example.com", "password": "securepass123", "role": "user" }
-```
+### Users
 
-#### Login
-```http
-POST /auth/login
-Content-Type: application/json
+| Method | Endpoint | Role |
+|--------|----------|------|
+| GET | /api/users | user+ |
+| GET | /api/users/:id | user+ |
+| PATCH | /api/users/:id/role | admin |
+| DELETE | /api/users/:id | admin |
 
-{ "email": "user@example.com", "password": "securepass123" }
-```
-Response:
+---
+
+### Other APIs
+
+| Method | Endpoint |
+|--------|----------|
+| GET | /api/reports |
+| POST | /api/reports |
+| GET | /api/settings |
+
+---
+
+## Example Login
+
+### Request
+
 ```json
 {
-  "success": true,
-  "accessToken": "eyJ...",
-  "refreshToken": "eyJ...",
-  "expiresIn": "15m",
-  "user": { "id": "...", "email": "...", "role": "user" }
+  "email": "admin@test.com",
+  "password": "SecurePass123"
 }
 ```
 
-#### Refresh Token
-```http
-POST /auth/refresh
-Content-Type: application/json
+### Response
 
-{ "refreshToken": "eyJ..." }
+```json
+{
+  "success": true,
+  "accessToken": "...",
+  "refreshToken": "..."
+}
 ```
 
-#### Logout
-```http
-POST /auth/logout
-Content-Type: application/json
+---
 
-{ "refreshToken": "eyJ..." }
-```
+## Security Features
 
-#### Get Current User
-```http
-GET /auth/me
-Authorization: Bearer eyJ...
-```
+- Password hashing
+- Token expiration
+- Token revocation
+- Refresh rotation
+- RBAC
+- Permission checks
+- Rate limiting
+- Secure headers
 
-### Protected API Endpoints
+---
 
-All require `Authorization: Bearer <accessToken>`
+## Deployment
 
-```http
-GET    /api/users              # users:read
-GET    /api/users/:id          # users:read
-PATCH  /api/users/:id/role     # admin + users:write
-DELETE /api/users/:id          # admin + users:delete
-GET    /api/reports            # reports:read
-POST   /api/reports            # admin/manager + reports:write
-GET    /api/settings           # admin + settings:read
-```
+Backend deployed on Render.
 
-## Middleware Usage
+Database hosted on Neon PostgreSQL.
 
-```js
-const { authenticate, authorize, requirePermission } = require('./middleware/auth');
+---
 
-// Require valid JWT
-router.get('/profile', authenticate, handler);
+## Author
 
-// Require specific role
-router.get('/admin-only', authenticate, authorize('admin'), handler);
-
-// Require specific permission (fine-grained)
-router.delete('/users/:id', authenticate, requirePermission('users:delete'), handler);
-```
-
-## Security Notes
-
-- In production, replace the in-memory store with **PostgreSQL** (users) + **Redis** (refresh tokens)
-- Use strong random strings for `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`
-- Enable HTTPS and set `NODE_ENV=production` so cookies are `Secure`
-- Consider adding 2FA on top of this system for sensitive applications
+Tanmay Chandorkar
