@@ -8,7 +8,10 @@ const { port } = require('./config/config');
 const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
 const cors = require('cors');
-
+const {
+  swaggerUi,
+  swaggerSpec
+} = require('./swagger');
 const app = express();
 
 app.use(cors({
@@ -34,6 +37,13 @@ app.use(rateLimit({
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/auth', authRoutes);
 app.use('/api', apiRoutes);
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(
+    swaggerSpec
+  )
+);
 
 // Health check
 app.get('/health', (req, res) => {
