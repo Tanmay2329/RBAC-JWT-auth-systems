@@ -1,5 +1,25 @@
 const { verifyAccessToken } = require('../utils/jwt');
-const { PERMISSIONS } = require('../models/store');
+const PERMISSIONS = {
+  admin: [
+    'users:read',
+    'users:write',
+    'users:delete',
+    'reports:read',
+    'reports:write',
+    'settings:read',
+    'settings:write'
+  ],
+  manager: [
+    'users:read',
+    'reports:read',
+    'reports:write',
+    'settings:read'
+  ],
+  user: [
+    'users:read',
+    'reports:read'
+  ]
+};
 
 /**
  * authenticate — verifies the Bearer access token on every protected route.

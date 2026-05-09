@@ -12,7 +12,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: "*",
+  origin: ["http://localhost:3000"],
   credentials: true
 }));
 
@@ -50,6 +50,15 @@ app.use((err, req, res, _next) => {
   console.error('[ERROR]', err);
   res.status(500).json({ success: false, message: 'Internal server error.' });
 });
+
+if (
+  !process.env.JWT_ACCESS_SECRET ||
+  !process.env.JWT_REFRESH_SECRET
+) {
+  throw new Error(
+    'JWT secrets missing'
+  );
+}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 if (require.main === module) {

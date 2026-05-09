@@ -19,13 +19,24 @@ const ROLES = {
 };
 
 
+const EMAIL_REGEX =
+/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
 // REGISTER
-async function register(req, res) {
+async function register(
+  req,
+  res
+) {
 
   try {
 
-    const { email, password, role } =
-      req.body;
+    const {
+      email,
+      password,
+      role
+    } = req.body;
+
 
     if (!email || !password) {
       return res.status(400).json({
@@ -35,6 +46,25 @@ async function register(req, res) {
       });
     }
 
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Invalid email format.'
+      });
+    }
+
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Password must be at least 8 characters.'
+      });
+    }
+
+
     const existingUser =
       await prisma.user.findUnique({
         where: {
@@ -42,6 +72,7 @@ async function register(req, res) {
             email.toLowerCase()
         }
       });
+
 
     if (existingUser) {
       return res.status(409).json({
@@ -51,8 +82,10 @@ async function register(req, res) {
       });
     }
 
+
     const hashedPassword =
       await hashPassword(password);
+
 
     const newUser =
       await prisma.user.create({
@@ -66,14 +99,18 @@ async function register(req, res) {
         }
       });
 
+
     return res.status(201).json({
       success: true,
       message:
         'User registered successfully.',
       user: {
-        id: newUser.id,
-        email: newUser.email,
-        role: newUser.role,
+        id:
+          newUser.id,
+        email:
+          newUser.email,
+        role:
+          newUser.role,
         createdAt:
           newUser.createdAt
       }
@@ -82,7 +119,7 @@ async function register(req, res) {
   } catch (err) {
 
     console.error(
-      '[register]',
+      '[REGISTER ERROR]',
       err
     );
 
@@ -96,12 +133,27 @@ async function register(req, res) {
 
 
 // LOGIN
-async function login(req, res) {
+async function login(
+  req,
+  res
+) {
 
   try {
 
-    const { email, password } =
-      req.body;
+    const {
+      email,
+      password
+    } = req.body;
+
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Email and password are required.'
+      });
+    }
+
 
     const user =
       await prisma.user.findUnique({
@@ -111,6 +163,7 @@ async function login(req, res) {
         }
       });
 
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -119,11 +172,13 @@ async function login(req, res) {
       });
     }
 
+
     const valid =
       await verifyPassword(
         password,
         user.password
       );
+
 
     if (!valid) {
       return res.status(401).json({
@@ -133,14 +188,27 @@ async function login(req, res) {
       });
     }
 
+
+    // one active session only
+    await prisma.refreshToken.deleteMany({
+      where: {
+        userId:
+          user.id
+      }
+    });
+
+
     const payload =
       buildTokenPayload(user);
+
 
     const accessToken =
       generateAccessToken(payload);
 
+
     const refreshToken =
       generateRefreshToken(payload);
+
 
     await prisma.refreshToken.create({
       data: {
@@ -151,23 +219,28 @@ async function login(req, res) {
       }
     });
 
+
     return res.status(200).json({
       success: true,
       message:
         'Login successful.',
       accessToken,
       refreshToken,
+      expiresIn: '15m',
       user: {
-        id: user.id,
-        email: user.email,
-        role: user.role
+        id:
+          user.id,
+        email:
+          user.email,
+        role:
+          user.role
       }
     });
 
   } catch (err) {
 
     console.error(
-      '[login]',
+      '[LOGIN ERROR]',
       err
     );
 
@@ -181,12 +254,25 @@ async function login(req, res) {
 
 
 // REFRESH
-async function refresh(req, res) {
+async function refresh(
+  req,
+  res
+) {
 
   try {
 
     const token =
       req.body.refreshToken;
+
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Refresh token required.'
+      });
+    }
+
 
     const tokenRecord =
       await prisma.refreshToken.findFirst({
@@ -194,6 +280,7 @@ async function refresh(req, res) {
           token
         }
       });
+
 
     if (!tokenRecord) {
       return res.status(401).json({
@@ -203,8 +290,10 @@ async function refresh(req, res) {
       });
     }
 
+
     const decoded =
       verifyRefreshToken(token);
+
 
     const user =
       await prisma.user.findUnique({
@@ -214,18 +303,61 @@ async function refresh(req, res) {
         }
       });
 
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          'User not found.'
+      });
+    }
+
+
     const payload =
       buildTokenPayload(user);
 
-    const accessToken =
+
+    // rotate token
+    await prisma.refreshToken.deleteMany({
+      where: {
+        token
+      }
+    });
+
+
+    const newAccessToken =
       generateAccessToken(payload);
+
+
+    const newRefreshToken =
+      generateRefreshToken(payload);
+
+
+    await prisma.refreshToken.create({
+      data: {
+        token:
+          newRefreshToken,
+        userId:
+          user.id
+      }
+    });
+
 
     return res.status(200).json({
       success: true,
-      accessToken
+      accessToken:
+        newAccessToken,
+      refreshToken:
+        newRefreshToken,
+      expiresIn: '15m'
     });
 
   } catch (err) {
+
+    console.error(
+      '[REFRESH ERROR]',
+      err
+    );
 
     return res.status(401).json({
       success: false,
@@ -237,18 +369,26 @@ async function refresh(req, res) {
 
 
 // LOGOUT
-async function logout(req, res) {
+async function logout(
+  req,
+  res
+) {
 
   try {
 
     const token =
       req.body.refreshToken;
 
-    await prisma.refreshToken.deleteMany({
-      where: {
-        token
-      }
-    });
+
+    if (token) {
+
+      await prisma.refreshToken.deleteMany({
+        where: {
+          token
+        }
+      });
+    }
+
 
     return res.status(200).json({
       success: true,
@@ -256,7 +396,12 @@ async function logout(req, res) {
         'Logged out successfully.'
     });
 
-  } catch {
+  } catch (err) {
+
+    console.error(
+      '[LOGOUT ERROR]',
+      err
+    );
 
     return res.status(500).json({
       success: false
@@ -266,7 +411,10 @@ async function logout(req, res) {
 
 
 // ME
-async function me(req, res) {
+async function me(
+  req,
+  res
+) {
 
   try {
 
@@ -275,15 +423,27 @@ async function me(req, res) {
         where: {
           id:
             req.user.id
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true
         }
       });
+
 
     return res.status(200).json({
       success: true,
       user
     });
 
-  } catch {
+  } catch (err) {
+
+    console.error(
+      '[ME ERROR]',
+      err
+    );
 
     return res.status(500).json({
       success: false
@@ -299,4 +459,3 @@ module.exports = {
   logout,
   me
 };
-
