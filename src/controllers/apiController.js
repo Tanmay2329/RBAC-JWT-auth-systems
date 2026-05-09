@@ -1,6 +1,5 @@
 const prisma = require('../config/db');
 
-
 async function getUsers(req, res) {
   try {
 
