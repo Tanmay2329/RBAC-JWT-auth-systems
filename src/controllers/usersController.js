@@ -30,13 +30,92 @@ async function getAllUsers(
     console.error(err);
 
     return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch users.'
+      success: false
     });
   }
 }
 
 
+async function getUserById(
+  req,
+  res
+) {
+
+  return res.status(200).json({
+    success: true,
+    message:
+      "Coming soon"
+  });
+}
+
+
+async function updateUserRole(
+  req,
+  res
+) {
+
+  return res.status(200).json({
+    success: true,
+    message:
+      "Coming soon"
+  });
+}
+
+
+async function deleteUser(
+  req,
+  res
+) {
+
+  return res.status(200).json({
+    success: true,
+    message:
+      "Coming soon"
+  });
+}
+
+
+async function getReports(
+  req,
+  res
+) {
+
+  return res.status(200).json({
+    success: true,
+    reports: []
+  });
+}
+
+
+async function createReport(
+  req,
+  res
+) {
+
+  return res.status(201).json({
+    success: true
+  });
+}
+
+
+async function getSettings(
+  req,
+  res
+) {
+
+  return res.status(200).json({
+    success: true
+  });
+}
+
+
 module.exports = {
-  getAllUsers
+  getAllUsers,
+  getUserById,
+  updateUserRole,
+  deleteUser,
+  getReports,
+  createReport,
+  getSettings
 };
+
